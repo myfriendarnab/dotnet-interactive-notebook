@@ -1,0 +1,95 @@
+#!markdown
+
+# Fluent Validation and Problem Details
+
+A quick investigation into whether we can do something useful/clever
+
+#!csharp
+
+#i "nuget:https://api.nuget.org/v3/index.json"
+
+#!markdown
+
+## Test Class
+
+Just something to apply validations to
+
+#!csharp
+
+public class TestClass
+{
+    public string Name   { get; set; }
+    public int    Number { get; set; }
+    public string Other  { get; set; }
+}
+
+var firstTest = new TestClass() { Name = "No spaces", Number = -5, Other = null };
+
+firstTest
+
+#!markdown
+
+## Validator
+
+Create a fluent validator to run against the class, run that against a known failure, list the errors that result
+
+#!csharp
+
+#r "nuget: FluentValidation"
+
+using FluentValidation;
+using FluentValidation.Results;
+using FluentValidation.AspNetCore;
+
+public class TestValidator : AbstractValidator<TestClass> 
+{
+    public TestValidator()
+    {
+        RuleFor(test => test.Number).GreaterThanOrEqualTo(0);
+        RuleFor(test => test.Other).NotEmpty();
+    }
+}
+
+var validator = new TestValidator();
+ValidationResult result = validator.Validate(firstTest);
+
+result.Errors
+
+#!markdown
+
+## Problem Details
+
+Can we export that to a validation problem details?
+
+First we need a validation result, second we need a model state, third we need to have the extension method that lets us join the two finally we need to drop that into the problem details.
+
+First create an (empty) model state, then add the validation result, and then dump the model
+
+#!csharp
+
+#r "nuget:FluentValidation.AspNetCore"
+#r "Microsoft.AspNetCore.Mvc.Core"
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using FluentValidation.AspNetCore;
+
+var modelState = new ModelStateDictionary();
+result.AddToModelState(modelState, null);
+
+modelState
+
+#!markdown
+
+## As json (as we might expect to be returned)
+
+Given the modelState, we can now start to get clever.
+
+We create a new ProblemDetails by using the ValidationProblemDetails subclass, and then we serialize that (so that we can see what we're doing)
+
+#!csharp
+
+using System.Text.Json;
+var validationDetails = new ValidationProblemDetails(modelState);
+
+JsonSerializer.Serialize(validationDetails, new JsonSerializerOptions() { WriteIndented = true } )

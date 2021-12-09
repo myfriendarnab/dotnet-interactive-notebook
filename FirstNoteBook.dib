@@ -1,0 +1,129 @@
+#!csharp
+
+#i "nuget:https://api.nuget.org/v3/index.json"
+
+#!csharp
+
+#r "nuget:Newtonsoft.Json"
+using Newtonsoft.Json;
+using System.Collections.Generic;
+
+#!markdown
+
+Creating type SomeInnerClass for comparision
+
+#!csharp
+
+public class SomeInnerClass: ICloneable
+{
+    public string Name {get; set;}
+    public string Value {get; set;}
+
+    public object Clone() => MemberwiseClone();
+}
+
+var s = new SomeInnerClass{Name="Arnab", Value="1"};
+s
+
+#!markdown
+
+Now creating a Comparer of SomeInnerClass
+
+#!csharp
+
+public class SomeInnerClassComparer : IEqualityComparer<SomeInnerClass>
+{
+    public bool Equals(SomeInnerClass x, SomeInnerClass y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (ReferenceEquals(x, null)) return false;
+        if (ReferenceEquals(y, null)) return false;
+        if (x.GetType() != y.GetType()) return false;
+        return x.Value == y.Value;
+    }
+
+    public int GetHashCode(SomeInnerClass obj)
+    {
+        return obj.Value.GetHashCode();
+    }
+}
+
+var comp = new SomeInnerClassComparer();
+comp
+
+#!markdown
+
+Now creating a container class
+
+#!csharp
+
+public class SomeClass{
+    public IDictionary<string,SomeInnerClass> InnerClassLookup {get; set;}
+}
+
+var so = new SomeClass{
+    InnerClassLookup = new Dictionary<string,SomeInnerClass>{
+        {"One", s},
+        {"Two", new SomeInnerClass{Name="Swagata", Value="2"}},
+        {"Three", new SomeInnerClass{Name="Mithai", Value="3"}},
+        {"Four", new SomeInnerClass{Name="Pupsy", Value="4"}}
+    }
+};
+so
+
+#!markdown
+
+now checking Comparer
+
+#!csharp
+
+using System.Text;
+
+var sb = new StringBuilder();
+
+foreach(var item in so.InnerClassLookup){
+    var newso = (item.Value.Clone() as SomeInnerClass);
+    item.Value.Value = "XYZ";
+    if(!comp.Equals(item.Value, newso))
+    {
+        sb.AppendLine(newso.Value);
+    }
+}
+
+var diff = sb.ToString();
+diff
+
+#!markdown
+
+Checking grouping operation
+
+#!csharp
+
+var someInnerClasses = new List<SomeInnerClass>
+{
+    new SomeInnerClass{Name = "One", Value = "1"},
+    new SomeInnerClass{Name = "One", Value = "2"},
+    new SomeInnerClass{Name = "One", Value = "3"},
+    new SomeInnerClass{Name = "Two", Value = "1"},
+    new SomeInnerClass{Name = "Two", Value = "2"},
+    new SomeInnerClass{Name = "Two", Value = "3"},
+    new SomeInnerClass{Name = "Three", Value = "1"},
+    new SomeInnerClass{Name = "Three", Value = "2"},
+    new SomeInnerClass{Name = "Three", Value = "3"}
+};
+
+someInnerClasses
+
+#!markdown
+
+Now grouping someInnerClasses
+
+#!csharp
+
+// var groupedClasses = someInnerClasses.GroupBy(s=>s.Name);
+var r = someInnerClasses.GroupBy(s=>s.Name).Select(g=>g.Select(x=>x.Value).ToArray());
+var r1 = someInnerClasses.GroupBy(s=>s.Name);
+var f = groupedClasses.First();
+var res = f.Select(x=>x.Value).ToArray();
+//res[0]
+r1.ToArray()[0].Key
